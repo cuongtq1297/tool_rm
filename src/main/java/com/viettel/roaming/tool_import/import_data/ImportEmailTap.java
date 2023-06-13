@@ -126,16 +126,17 @@ public class ImportEmailTap {
                 String require = rs.getString("require");
                 String seq = rs.getString("seq_in_file");
                 String columnImport = rs.getString("column_import");
+                String type = rs.getString("type");
                 if (seq == null) {
                     if (rs.getString("field_name").equalsIgnoreCase("pendingTime")) {
                         Map<String, String> map = new HashMap<String, String>();
                         map.put("column_import", columnImport);
                         map.put("value", pendingTime);
+                        map.put("data_type", type);
                         lstAll.add(map);
                     }
                 } else {
                     int seqInt = Integer.parseInt(seq) - 1;
-                    String type = rs.getString("type");
                     String value = fields.get(seqInt);
                     if (require.equals("1")) {
                         if (value == null || value.equals("")) {
@@ -144,6 +145,7 @@ public class ImportEmailTap {
                             Map<String, String> map = new HashMap<String, String>();
                             map.put("column_import", columnImport);
                             map.put("value", value);
+                            map.put("data_type", type);
                             lstCheckExist.add(map);
                         }
                     }
@@ -152,6 +154,7 @@ public class ImportEmailTap {
                             Map<String, String> map = new HashMap<String, String>();
                             map.put("column_import", columnImport);
                             map.put("value", value);
+                            map.put("data_type", type);
                             lstAll.add(map);
                         }
                     } else if (type.equals("datetime")) {
@@ -159,6 +162,7 @@ public class ImportEmailTap {
                             Map<String, String> map = new HashMap<String, String>();
                             map.put("column_import", columnImport);
                             map.put("value", formatDatetime(value));
+                            map.put("data_type", type);
                             lstAll.add(map);
                         }
                     } else if (type.equals("number")) {
@@ -166,6 +170,7 @@ public class ImportEmailTap {
                             Map<String, String> map = new HashMap<String, String>();
                             map.put("column_import", columnImport);
                             map.put("value", value);
+                            map.put("data_type", type);
                             lstAll.add(map);
                         }
                     }
@@ -177,7 +182,14 @@ public class ImportEmailTap {
                 Map<String, String> data = lstCheckExist.get(i);
                 String columnName = data.get("column_import");
                 String value = data.get("value");
-                queryBuilder.append(columnName + " = '" + value + "'");
+                String dataType = data.get("data_type");
+                if (dataType.equals("text")) {
+                    queryBuilder.append(columnName + " = '" + value + "'");
+                } else if (dataType.equals("number")) {
+                    queryBuilder.append(columnName + " = " + value);
+                } else {
+                    queryBuilder.append(columnName + " = " + "TO_DATE('" + value + "', 'yyyy-mm-dd hh24:mi:ss')");
+                }
 
                 if (i < lstCheckExist.size() - 1) {
                     queryBuilder.append(" AND ");
@@ -189,34 +201,63 @@ public class ImportEmailTap {
                 StringBuilder sb = new StringBuilder(" update ");
                 sb.append(tableImport).append(" set ");
                 for (int i = 0; i < lstAll.size(); i++) {
+                    String dataType = lstAll.get(i).get("data_type");
+                    String value = lstAll.get(i).get("value");
+                    String columnImport = lstAll.get(i).get("column_import");
                     if (i == lstAll.size() - 1) {
-                        sb.append(lstAll.get(i).get("column_import")).append(" = '" + lstAll.get(i).get("value") + "'");
+                        if (dataType.equals("text")) {
+                            sb.append(columnImport).append(" = '" + value + "'");
+                        } else if (dataType.equals("number")) {
+                            sb.append(columnImport).append(" = " + value);
+                        } else {
+                            sb.append(columnImport).append(" = TO_DATE('" + value + "', 'yyyy-mm-dd hh24:mi:ss')");
+                        }
                     } else {
-                        sb.append(lstAll.get(i).get("column_import")).append(" = '" + lstAll.get(i).get("value") + "',");
+                        if (dataType.equals("text")) {
+                            sb.append(columnImport).append(" = '" + value + "',");
+                        } else if (dataType.equals("number")) {
+                            sb.append(columnImport).append(" = " + value + ",");
+                        } else {
+                            sb.append(columnImport).append(" = TO_DATE('" + value + "', 'yyyy-mm-dd hh24:mi:ss')" + ",");
+                        }
                     }
                 }
                 sb.append(" where ");
                 for (int i = 0; i < lstCheckExist.size(); i++) {
+                    String columnName = lstCheckExist.get(i).get("column_import");
+                    String value = lstCheckExist.get(i).get("value");
+                    String dataType = lstCheckExist.get(i).get("data_type");
                     if (i == lstCheckExist.size() - 1) {
-                        sb.append(lstCheckExist.get(i).get("column_import") + " = '").append(lstCheckExist.get(i).get("value") + "'");
+                        if (dataType.equals("text")) {
+                            sb.append(columnName + " = '").append(value + "'");
+                        } else if (dataType.equals("number")) {
+                            sb.append(columnName + " = ").append(value);
+                        } else {
+                            sb.append(columnName + " = ").append("TO_DATE('" + value + "','yyyy-mm-dd hh24:mi:ss')");
+                        }
                     } else {
-                        sb.append(lstCheckExist.get(i).get("column_import") + " = '").append(lstCheckExist.get(i).get("value") + "' AND ");
+                        if (dataType.equals("text")) {
+                            sb.append(columnName + " = '").append(value + "' AND ");
+                        } else if (dataType.equals("number")) {
+                            sb.append(columnName + " = ").append(value + " AND ");
+                        } else {
+                            sb.append(columnName + " = ").append("TO_DATE('" + value + "','yyyy-mm-dd hh24:mi:ss') AND ");
+                        }
                     }
                 }
                 ps = connection2.prepareStatement(sb.toString());
             } else {
                 String insertQuery = "INSERT INTO " + tableImport + " (";
                 for (int i = 0; i < lstAll.size(); i++) {
-                    String column = (String) lstAll.get(i).get("column_import");
-                    insertQuery += column;
-                    if (i < lstAll.size() - 1) {
-                        insertQuery += ",";
-                    }
-                }
-                insertQuery += ") VALUES (";
-                for (int i = 0; i < lstAll.size(); i++) {
                     String value = (String) lstAll.get(i).get("value");
-                    insertQuery += "'" + value + "'";
+                    String dataType = (String) lstAll.get(i).get("data_type");
+                    if (dataType.equals("text")) {
+                        insertQuery += "'" + value + "'";
+                    } else if (dataType.equals("number")) {
+                        insertQuery += value;
+                    } else if (dataType.equals("datetime")) {
+                        insertQuery += "TO_DATE('" + value + "', 'yyyy-mm-dd hh24:mi:ss')";
+                    }
                     if (i < lstAll.size() - 1) {
                         insertQuery += ",";
                     }
