@@ -65,21 +65,21 @@ public class ImportEmailDfd {
             while ((line1 = reader1.readLine()) != null) {
                 if (!line1.matches("[\\s-]+")) {
                     List<String> list = new ArrayList<String>();
-                    list.add(0, (String) line1.subSequence(0, 5));
-                    list.add(1, (String) line1.subSequence(6, 11));
-                    list.add(2, (String) line1.subSequence(12, 27));
-                    list.add(3, (String) line1.subSequence(28, 43));
-                    list.add(4, (String) line1.subSequence(44, 51));
-                    list.add(5, (String) line1.subSequence(52, 55));
-                    list.add(6, (String) line1.subSequence(56, 66));
-                    list.add(7, (String) line1.subSequence(67, 70));
-                    list.add(8, (String) line1.subSequence(71, 86));
-                    list.add(9, (String) line1.subSequence(87, 102));
-                    list.add(10, (String) line1.subSequence(103, 104));
-                    list.add(11, (String) line1.subSequence(105, 120));
-                    list.add(12, (String) line1.subSequence(121, 124));
-                    list.add(13, (String) line1.subSequence(125, 128));
-                    list.add(14, (String) line1.subSequence(129, 132));
+                    list.add(0, line1.subSequence(0, 5).toString().trim());
+                    list.add(1, line1.subSequence(6, 11).toString().trim());
+                    list.add(2, line1.subSequence(12, 27).toString().trim());
+                    list.add(3, line1.subSequence(28, 43).toString().trim());
+                    list.add(4, line1.subSequence(44, 51).toString().trim());
+                    list.add(5, line1.subSequence(52, 55).toString().trim());
+                    list.add(6, line1.subSequence(56, 66).toString().trim());
+                    list.add(7, line1.subSequence(67, 70).toString().trim());
+                    list.add(8, line1.subSequence(71, 86).toString().trim());
+                    list.add(9, line1.subSequence(87, 102).toString().trim());
+                    list.add(10, line1.subSequence(103, 104).toString().trim());
+                    list.add(11, line1.subSequence(105, 120).toString().trim());
+                    list.add(12, line1.subSequence(121, 124).toString().trim());
+                    list.add(13, line1.subSequence(125, 128).toString().trim());
+                    list.add(14, line1.subSequence(129, 132).toString().trim());
                     result = InsertData(connection1, connection2, list, tableImport, emailConfigId, vpmn);
                     if (!result) {
                         break;

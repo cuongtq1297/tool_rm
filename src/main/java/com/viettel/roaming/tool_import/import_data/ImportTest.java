@@ -1,10 +1,7 @@
 package com.viettel.roaming.tool_import.import_data;
 
 import com.viettel.roaming.tool_import.database.GetConnection;
-import com.viettel.roaming.tool_import.database.GetConnectionToImport;
 import com.viettel.roaming.tool_import.util.StringUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.io.BufferedReader;
 import java.io.StringReader;
@@ -14,97 +11,51 @@ import java.sql.ResultSet;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-public class ImportEmailHur {
-    private static final Logger logger = LogManager.getLogger(ImportEmailHur.class);
-
-    public static boolean importData(String data, Long emailConfigId) throws Exception {
-        Connection connection1 = null;
-        PreparedStatement stmt = null;
-        ResultSet rs = null;
-        Connection connection2 = null;
-        boolean result = false;
+public class ImportTest {
+    public static void Import(String data) throws Exception {
+        Connection connection = null;
         BufferedReader reader = new BufferedReader(new StringReader(data));
         String line;
         try {
-            String tableImport = "";
-            connection1 = GetConnection.connect();
-            String sql = "select * from email.email_database_connection where type_name = 'HUR'";
-            stmt = connection1.prepareStatement(sql);
-            rs = stmt.executeQuery();
-            if (rs.next()) {
-                tableImport = rs.getString("table_import");
-            } else {
-                return false;
-            }
-            connection2 = GetConnectionToImport.connectNew("HUR");
-            connection2.setAutoCommit(false);
+            connection = GetConnection.connect();
             String hplmn = "";
             String vplmn = "";
             while ((line = reader.readLine()) != null) {
                 if (line.startsWith("H")) {
                     List<String> fields = Arrays.asList(line.split(","));
-                    hplmn = fields.get(1);
-                    vplmn = fields.get(2);
+                    hplmn = fields.get(1).trim();
+                    vplmn = fields.get(2).trim();
                 }
-
                 if (line.startsWith("P")) {
                     List<String> fields = Arrays.asList(line.split(","));
                     List<String> trimmedFields = new ArrayList<>();
                     for (String field : fields) {
                         trimmedFields.add(field.trim());
                     }
-                    result = InsertData(connection1, connection2, trimmedFields, tableImport, emailConfigId, hplmn, vplmn);
-                    if (!result) {
-                        break;
-                    }
+                    logInsertQuery(connection, trimmedFields, "hur_table", hplmn, vplmn);
                 } else if (line.startsWith("C")) {
                     List<String> fields = Arrays.asList(line.split(","));
                     List<String> trimmedFields = new ArrayList<>();
                     for (String field : fields) {
                         trimmedFields.add(field.trim());
                     }
-                    result = InsertData(connection1, connection2, trimmedFields, tableImport, emailConfigId, hplmn, vplmn);
-                    if (!result) {
-                        break;
-                    }
-                } else if (line.startsWith("S")) {
-                    List<String> fields = Arrays.asList(line.split(","));
-                    List<String> trimmedFields = new ArrayList<>();
-                    for (String field : fields) {
-                        trimmedFields.add(field.trim());
-                    }
-                    result = InsertData(connection1, connection2, trimmedFields, tableImport, emailConfigId, hplmn, vplmn);
-                    if (!result) {
-                        break;
-                    }
+                    logInsertQuery(connection, trimmedFields, "hur_table", hplmn, vplmn);
                 }
             }
-            if (result) {
-                connection2.commit();
-            }
-
         } catch (Exception e) {
-            logger.error("import data fail" + e);
-        } finally {
-            connection1.close();
-            connection2.close();
+            throw e;
         }
-        return result;
     }
 
-
-    public static boolean InsertData(Connection connection1, Connection connection2, List<String> fields, String tableImport, Long emailConfigId, String hplmn, String vplmn) throws Exception {
-        boolean result = false;
-        int resultInsert = 0;
-        PreparedStatement ps = null;
+    public static void logInsertQuery(Connection connection, List<String> fields, String tableImport, String hplmn, String vplmn) throws Exception {
+        PreparedStatement stmt = null;
         ResultSet rs = null;
+        String sql = "select * from email.email_config_detail where email_config_id = 1 ";
         List<Map<String, String>> lstAll = new ArrayList<Map<String, String>>();
         List<Map<String, String>> lstCheckExist = new ArrayList<Map<String, String>>();
         try {
-            String getDataImportConfig = "select * from email.email_config_detail where email_config_id = ? ";
-            ps = connection1.prepareStatement(getDataImportConfig);
-            ps.setLong(1, emailConfigId);
-            rs = ps.executeQuery();
+            stmt = connection.prepareStatement(sql);
+            rs = stmt.executeQuery();
             while (rs.next()) {
                 String type = rs.getString("type");
                 String columnImport = rs.getString("column_import");
@@ -135,7 +86,7 @@ public class ImportEmailHur {
                         int seqInt = Integer.parseInt(seq) - 1;
                         if (require.equals("1")) {
                             if (fields.get(seqInt) == null || fields.get(seqInt).equals("")) {
-                                return false;
+
                             } else {
                                 Map<String, String> map = new HashMap<String, String>();
                                 map.put("column_import", columnImport);
@@ -164,7 +115,7 @@ public class ImportEmailHur {
                     }
                     if (require.equals("1")) {
                         if (dateTime.equals("")) {
-                            return false;
+
                         } else {
                             Map<String, String> map = new HashMap<String, String>();
                             map.put("column_import", columnImport);
@@ -183,7 +134,7 @@ public class ImportEmailHur {
                     int seqInt = Integer.parseInt(seq) - 1;
                     if (require.equals("1")) {
                         if (fields.get(seqInt) == null || fields.get(seqInt).equals("")) {
-                            return false;
+
                         } else {
                             Map<String, String> map = new HashMap<String, String>();
                             map.put("column_import", columnImport);
@@ -220,95 +171,84 @@ public class ImportEmailHur {
                     queryBuilder.append(" AND ");
                 }
             }
-            ps = connection2.prepareStatement(queryBuilder.toString());
-            rs = ps.executeQuery();
-            if (rs.next()) {
-                StringBuilder sb = new StringBuilder(" update ");
-                sb.append(tableImport).append(" set ");
-                for (int i = 0; i < lstAll.size(); i++) {
-                    String dataType = lstAll.get(i).get("data_type");
-                    String value = lstAll.get(i).get("value");
-                    String columnImport = lstAll.get(i).get("column_import");
-                    if (i == lstAll.size() - 1) {
-                        if (dataType.equals("text")) {
-                            sb.append(columnImport).append(" = '" + value + "'");
-                        } else if (dataType.equals("number")) {
-                            sb.append(columnImport).append(" = " + value);
-                        } else {
-                            sb.append(columnImport).append(" = TO_DATE('" + value + "', 'yyyy-mm-dd hh24:mi:ss')");
-                        }
-                    } else {
-                        if (dataType.equals("text")) {
-                            sb.append(columnImport).append(" = '" + value + "',");
-                        } else if (dataType.equals("number")) {
-                            sb.append(columnImport).append(" = " + value + ",");
-                        } else {
-                            sb.append(columnImport).append(" = TO_DATE('" + value + "', 'yyyy-mm-dd hh24:mi:ss')" + ",");
-                        }
-                    }
-                }
-                sb.append(" where ");
-                for (int i = 0; i < lstCheckExist.size(); i++) {
-                    String columnName = lstCheckExist.get(i).get("column_import");
-                    String value = lstCheckExist.get(i).get("value");
-                    String dataType = lstCheckExist.get(i).get("data_type");
-                    if (i == lstCheckExist.size() - 1) {
-                        if (dataType.equals("text")) {
-                            sb.append(columnName + " = '").append(value + "'");
-                        } else if (dataType.equals("number")) {
-                            sb.append(columnName + " = ").append(value);
-                        } else {
-                            sb.append(columnName + " = ").append("TO_DATE('" + value + "','yyyy-mm-dd hh24:mi:ss')");
-                        }
-                    } else {
-                        if (dataType.equals("text")) {
-                            sb.append(columnName + " = '").append(value + "' AND ");
-                        } else if (dataType.equals("number")) {
-                            sb.append(columnName + " = ").append(value + " AND ");
-                        } else {
-                            sb.append(columnName + " = ").append("TO_DATE('" + value + "','yyyy-mm-dd hh24:mi:ss') AND ");
-                        }
-                    }
-                }
-                ps = connection2.prepareStatement(sb.toString());
-            } else {
-                String insertQuery = "INSERT INTO " + tableImport + " (";
-                for (int i = 0; i < lstAll.size(); i++) {
-                    String column = (String) lstAll.get(i).get("column_import");
-                    insertQuery += column;
-                    if (i < lstAll.size() - 1) {
-                        insertQuery += ",";
-                    }
-                }
-                insertQuery += ") VALUES (";
-                for (int i = 0; i < lstAll.size(); i++) {
-                    String value = (String) lstAll.get(i).get("value");
-                    String dataType = (String) lstAll.get(i).get("data_type");
+            System.out.println("check ton tai: " + queryBuilder);
+            StringBuilder sb = new StringBuilder(" update ");
+            sb.append(tableImport).append(" set ");
+            for (int i = 0; i < lstAll.size(); i++) {
+                String dataType = lstAll.get(i).get("data_type");
+                String value = lstAll.get(i).get("value");
+                String columnImport = lstAll.get(i).get("column_import");
+                if (i == lstAll.size() - 1) {
                     if (dataType.equals("text")) {
-                        insertQuery += "'" + value + "'";
+                        sb.append(columnImport).append(" = '" + value + "'");
                     } else if (dataType.equals("number")) {
-                        insertQuery += value;
-                    } else if (dataType.equals("datetime")) {
-                        insertQuery += "TO_DATE('" + value + "', 'yyyy-mm-dd hh24:mi:ss')";
+                        sb.append(columnImport).append(" = " + value);
+                    } else {
+                        sb.append(columnImport).append(" = TO_DATE('" + value + "', 'yyyy-mm-dd hh24:mi:ss')");
                     }
-                    if (i < lstAll.size() - 1) {
-                        insertQuery += ",";
+                } else {
+                    if (dataType.equals("text")) {
+                        sb.append(columnImport).append(" = '" + value + "',");
+                    } else if (dataType.equals("number")) {
+                        sb.append(columnImport).append(" = " + value + ",");
+                    } else {
+                        sb.append(columnImport).append(" = TO_DATE('" + value + "', 'yyyy-mm-dd hh24:mi:ss')" + ",");
                     }
                 }
-                insertQuery += ")";
-                ps = connection2.prepareStatement(insertQuery);
             }
-            resultInsert = ps.executeUpdate();
-            if (resultInsert == 1) {
-                result = true;
+            sb.append(" where ");
+            for (int i = 0; i < lstCheckExist.size(); i++) {
+                String columnName = lstCheckExist.get(i).get("column_import");
+                String value = lstCheckExist.get(i).get("value");
+                String dataType = lstCheckExist.get(i).get("data_type");
+                if (i == lstCheckExist.size() - 1) {
+                    if (dataType.equals("text")) {
+                        sb.append(columnName + " = '").append(value + "'");
+                    } else if (dataType.equals("number")) {
+                        sb.append(columnName + " = ").append(value);
+                    } else {
+                        sb.append(columnName + " = ").append("TO_DATE('" + value + "','yyyy-mm-dd hh24:mi:ss')");
+                    }
+                } else {
+                    if (dataType.equals("text")) {
+                        sb.append(columnName + " = '").append(value + "' AND ");
+                    } else if (dataType.equals("number")) {
+                        sb.append(columnName + " = ").append(value + " AND ");
+                    } else {
+                        sb.append(columnName + " = ").append("TO_DATE('" + value + "','yyyy-mm-dd hh24:mi:ss') AND ");
+                    }
+                }
             }
+            System.out.println("neu ton tai : " + sb);
+            String insertQuery = "INSERT INTO " + tableImport + " (";
+            for (int i = 0; i < lstAll.size(); i++) {
+                String column = (String) lstAll.get(i).get("column_import");
+                insertQuery += column;
+                if (i < lstAll.size() - 1) {
+                    insertQuery += ",";
+                }
+            }
+            insertQuery += ") VALUES (";
+            for (int i = 0; i < lstAll.size(); i++) {
+                String value = (String) lstAll.get(i).get("value");
+                String dataType = (String) lstAll.get(i).get("data_type");
+                if (dataType.equals("text")) {
+                    insertQuery += "'" + value + "'";
+                } else if (dataType.equals("number")) {
+                    insertQuery += value;
+                } else if (dataType.equals("datetime")) {
+                    insertQuery += "TO_DATE('" + value + "', 'yyyy-mm-dd hh24:mi:ss')";
+                }
+                if (i < lstAll.size() - 1) {
+                    insertQuery += ",";
+                }
+            }
+            insertQuery += ")";
+            System.out.println("neu khong ton tai : " + insertQuery);
+            System.out.println("------------------------------------------------------------------------");
         } catch (Exception e) {
-            logger.error(e);
-        } finally {
-            ps.close();
-            rs.close();
+            throw e;
         }
-        return result;
     }
 
     public static String formatDatetime(String dateTimeString) throws Exception {
@@ -319,7 +259,7 @@ public class ImportEmailHur {
             Date dateTime = inputFormatter.parse(dateTimeString);
             formattedDateTime = outputFormatter.format(dateTime);
         } catch (Exception e) {
-            logger.error(e);
+            throw e;
         }
         return formattedDateTime;
     }

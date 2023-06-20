@@ -39,8 +39,12 @@ public class ImportEmailMissingConfig {
             String line;
             while ((line = reader.readLine()) != null) {
                 List<String> fields = Arrays.asList(line.split("\\s+"));
+                List<String> trimmedFields = new ArrayList<>();
+                for (String field : fields) {
+                    trimmedFields.add(field.trim());
+                }
                 if (!fields.get(0).equals("Tapname")) {
-                    result = InsertData(connection1, connection2, fields, tableImport, emailConfigId);
+                    result = InsertData(connection1, connection2, trimmedFields, tableImport, emailConfigId);
                     if (!result) {
                         break;
                     }

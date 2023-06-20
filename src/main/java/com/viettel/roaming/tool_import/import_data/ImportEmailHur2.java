@@ -43,12 +43,36 @@ public class ImportEmailHur2 {
             while ((line = reader.readLine()) != null) {
                 if (line.startsWith("H")) {
                     List<String> fields = Arrays.asList(line.split(","));
-                    hplmn = fields.get(1);
-                    vplmn = fields.get(2);
+                    hplmn = fields.get(1).trim();
+                    vplmn = fields.get(2).trim();
                 }
-                if (line.startsWith("C")) {
+                if (line.startsWith("P")) {
                     List<String> fields = Arrays.asList(line.split(","));
-                    result = InsertData(connection1, connection2, fields, tableImport, emailConfigId, hplmn, vplmn);
+                    List<String> trimmedFields = new ArrayList<>();
+                    for (String field : fields) {
+                        trimmedFields.add(field.trim());
+                    }
+                    result = InsertData(connection1, connection2, trimmedFields, tableImport, emailConfigId, hplmn, vplmn);
+                    if (!result) {
+                        break;
+                    }
+                } else if (line.startsWith("C")) {
+                    List<String> fields = Arrays.asList(line.split(","));
+                    List<String> trimmedFields = new ArrayList<>();
+                    for (String field : fields) {
+                        trimmedFields.add(field.trim());
+                    }
+                    result = InsertData(connection1, connection2, trimmedFields, tableImport, emailConfigId, hplmn, vplmn);
+                    if (!result) {
+                        break;
+                    }
+                } else if (line.startsWith("S")) {
+                    List<String> fields = Arrays.asList(line.split(","));
+                    List<String> trimmedFields = new ArrayList<>();
+                    for (String field : fields) {
+                        trimmedFields.add(field.trim());
+                    }
+                    result = InsertData(connection1, connection2, trimmedFields, tableImport, emailConfigId, hplmn, vplmn);
                     if (!result) {
                         break;
                     }
